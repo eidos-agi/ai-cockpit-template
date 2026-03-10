@@ -1,6 +1,6 @@
 {
   "version": "v1.3.0",
-  "generated": "2026-03-10T15:24:00Z",
+  "generated": "2026-03-10T15:37:08Z",
   "skills": {
     "clean-sweep/skill.md": {
       "path": ".claude/skills/clean-sweep/skill.md",
@@ -20,7 +20,7 @@
     },
     "pre-flight/skill.md": {
       "path": ".claude/skills/pre-flight/skill.md",
-      "sha256": "fde8a5371c18ada10e1550ee4801722111ae9d69830643debcc0f4c8429b60b0"
+      "sha256": "42b10df1862e0ee511c7d2a88baeb613d55749ff95fe83097ef05f6f8e53601e"
     },
     "takeoff/cockpit-template.html": {
       "path": ".claude/skills/takeoff/cockpit-template.html",
@@ -28,7 +28,7 @@
     },
     "takeoff/skill.md": {
       "path": ".claude/skills/takeoff/skill.md",
-      "sha256": "e1159ac8e843ed871546457e0de4a9f72b31bafa4a523c1e0e9cbe7e19356ebe"
+      "sha256": "201ac6e8e5e795e34040eeed19d1191bf4b38e2d30a034f6637f1ee1ef81d1d4"
     }
   }
 }

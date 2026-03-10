@@ -2,36 +2,37 @@
 
 ## v1.3.0 — 2026-03-10
 
-Fleet sync, phone-home updates, and learning browser — backported from production cockpit usage.
+Lean takeoff, fleet sync, phone-home, and learning browser plugin.
 
-### Takeoff
-- **Fleet Sync (opt-in)** — Step 0 discovers repos via `gh repo list`, fetches/pulls all fleet repos, builds pilot activity maps from git author aliases, and surfaces fleet health in terminal, takeoff.md, and cockpit.html. Only runs if `cockpit.org` or `cockpit.repos_dir` is set in state.json — single-repo cockpits skip it entirely.
-- **Phone Home (Step 1.5)** — Runs `./bin/update-from-template --check` silently during boot. If an update is available, surfaces it in the status bar. Never blocks takeoff.
-- **Template update line** in status bar: `TEMPLATE  update available: v1.2.1 → v1.3.0`
+### Takeoff — Rewritten for Speed
+- **No more subagent.** Pre-flight runs inline from data already in context (commits, bookmark, CLAUDE.md). Max 3 tool calls for entire boot.
+- **Commit messages are the briefing.** Recent Activity section shows last 5-10 commits — the actual truth of what happened.
+- **HTML is opt-in.** `cockpit.html` only generated when explicitly requested or `custom.html_dashboard` is true.
+- **Phone Home (Step 1.5)** — Runs `./bin/update-from-template --check` silently. Surfaces available updates in status bar. Never blocks.
+- **Fleet Sync (opt-in Step 0)** — Only runs if `cockpit.org` or `cockpit.repos_dir` is set. Discovers repos via `gh`, fetches/pulls, builds pilot activity maps. Single-repo cockpits skip entirely.
 
-### Pre-flight
-- **Steps G & H** — Fleet status and pilot activity now feed into the briefing when fleet data is available
-- Fleet health woven into WHERE WE ARE (dirty/diverged/unpushed repos)
-- Remote arrivals woven into WHERE WE WERE (what other pilots pushed)
-- Unpushed work flagged in WHERE WE'RE GOING as an action item
-- Failed syncs flagged in BLOCKERS
-- **Standalone mode** — when called independently (not from takeoff), runs `git fetch --all` without pulling
-- Quality checklist expanded with fleet-aware items
+### Pre-flight — Now Lightweight
+- Runs inline (no subagent, no Explore agent)
+- Sources: commit messages, bookmark, CLAUDE.md, fleet data (if available)
+- Zero extra tool calls — synthesizes from session context only
+- Format simplified: RECENT ACTIVITY → RESUME → NEXT → BLOCKERS
 
 ### Cockpit HTML Template
 - Added fleet dashboard CSS (repo tables, pilot activity cards, status colors)
-- Added `{{FLEET_SECTION}}` placeholder — empty string when fleet sync doesn't run
+- Added `{{FLEET_SECTION}}` placeholder
+- **Now opt-in** — not generated unless requested
 
 ### New Skill
-- `/clean-sweep` — Workspace-wide commit, push, build, and test sweep. Discovers all repos, commits dirty work, pushes everything, runs builds/tests in parallel, produces a sweep report saved to `sweeps/`.
+- `/clean-sweep` — Workspace-wide commit, push, build, test sweep
 
-### New: Learning Browser
-- Added `tools/learning-browser/` with agent-browser instructions for persistent research sessions
-- Cockpits can store learnings and maintain browser sessions across days
+### New Plugin: Learning Browser
+- `tools/learning-browser/` — plugin pattern for persistent browser research
+- Each cockpit forks and customizes for their domain (finance, security, planning, etc.)
+- agent-browser profile per cockpit, session persistence across days
 
 ### State
-- state.json template now documents optional fleet fields (`org`, `repos_dir`, `fleet`, `pilots`)
-- Added `cockpit.template` and `cockpit.template_version` fields for phone-home support
+- state.json template documents optional fleet fields (`org`, `repos_dir`, `fleet`, `pilots`)
+- Added `cockpit.template` and `cockpit.template_version` for phone-home
 
 ## v1.2.1 — 2026-02-26
 
