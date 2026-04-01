@@ -11,6 +11,7 @@ Usage:
     cockpit list         Non-interactive list
     cockpit add <path>   Register a cockpit manually
     cockpit remove <name> Remove from registry
+    cockpit new <path>   Create a new cockpit from the template
     cockpit config       Show/edit configuration
     cockpit marketplace  Discover Claude Code plugins
 
@@ -25,6 +26,7 @@ All cockpits launch with --enable-auto-mode by default.
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import traceback
@@ -1101,6 +1103,181 @@ def cmd_config(args):
     print()
 
 
+def cmd_new(args):
+    """Create a new cockpit from the template."""
+    TEMPLATE_DIR = Path(__file__).parent / "template"
+
+    if not TEMPLATE_DIR.exists():
+        print("  \033[31mTemplate files not found in package.\033[0m")
+        print("  Reinstall: pip install ai-cockpit")
+        sys.exit(1)
+
+    # Parse args
+    github = "--github" in args
+    path_args = [a for a in args if not a.startswith("--")]
+
+    if not path_args:
+        print()
+        print("  \033[1m\033[36mCreate a new cockpit\033[0m")
+        print()
+        print("  Usage: cockpit new <path> [--github]")
+        print()
+        print("  Examples:")
+        print("    cockpit new ~/repos/my-planning-cockpit")
+        print("    cockpit new ./ops-cockpit --github")
+        print()
+        print("  This creates a ready-to-fly cockpit with:")
+        print("    - /takeoff, /land, /cockpit-status skills")
+        print("    - state.json for session tracking")
+        print("    - CLAUDE.md template with placeholder sections to fill in")
+        print("    - Git repo initialized")
+        print()
+        print("  After creating, customize CLAUDE.md with your role context,")
+        print("  then run: cockpit <name>")
+        print()
+        return
+
+    target = Path(path_args[0]).expanduser().resolve()
+
+    if target.exists() and any(target.iterdir()):
+        print(f"  \033[31mDirectory not empty:\033[0m {target}")
+        sys.exit(1)
+
+    # Interactive setup
+    print()
+    print("  \033[1m\033[36mNew Cockpit\033[0m")
+    print()
+
+    name = target.name
+    try:
+        name_input = input(f"  Name [{name}]: ").strip()
+        if name_input:
+            name = name_input
+
+        org = target.parent.name
+        org_input = input(f"  Org [{org}]: ").strip()
+        if org_input:
+            org = org_input
+
+        description = input("  Description (optional): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print("\n  Cancelled.")
+        return
+
+    slug = name.lower().replace(" ", "-").replace("_", "-")
+
+    # Copy template
+    print()
+    print(f"  \033[90mScaffolding {target}...\033[0m")
+    target.mkdir(parents=True, exist_ok=True)
+
+    # Copy skills
+    src_skills = TEMPLATE_DIR / ".claude" / "skills"
+    dst_skills = target / ".claude" / "skills"
+    if src_skills.exists():
+        shutil.copytree(src_skills, dst_skills, dirs_exist_ok=True)
+        skill_count = len(list(dst_skills.iterdir()))
+        print(f"  \033[32m+\033[0m {skill_count} skills installed")
+
+    # Copy tools
+    src_tools = TEMPLATE_DIR / "tools"
+    if src_tools.exists():
+        shutil.copytree(src_tools, target / "tools", dirs_exist_ok=True)
+
+    # Write state.json
+    today = datetime.now().strftime("%Y-%m-%d")
+    state = {
+        "cockpit": {
+            "name": name,
+            "version": "1.3.0",
+            "template": "eidos-agi/ai-cockpit-template",
+            "template_version": "v0.1.0",
+            "created": today,
+        },
+        "theme": {
+            "primary": "#3fb950",
+            "danger": "#f85149",
+            "warning": "#d29922",
+            "bg": "#0d1117",
+            "surface": "#161b22",
+            "text": "#e6edf3",
+            "muted": "#8b949e",
+        },
+        "watermarks": {
+            "last_takeoff": None,
+            "last_land": None,
+            "last_status_check": None,
+        },
+        "counters": {"sessions": 0, "takeoffs": 0, "landings": 0},
+        "custom": {},
+    }
+    (target / "state.json").write_text(json.dumps(state, indent=2) + "\n")
+    print("  \033[32m+\033[0m state.json")
+
+    # Write CLAUDE.md from template
+    claude_md = (TEMPLATE_DIR / "CLAUDE.md").read_text()
+    claude_md = claude_md.replace("[YOUR ROLE]", name)
+    claude_md = claude_md.replace("[YOUR ORG]", org)
+    claude_md = claude_md.replace("AI Cockpit Template", name)
+    (target / "CLAUDE.md").write_text(claude_md)
+    print("  \033[32m+\033[0m CLAUDE.md")
+
+    # Write .gitignore
+    (target / ".gitignore").write_text(
+        "# OS\n.DS_Store\n\n# Claude Code\n.claude/settings.local.json\n"
+    )
+
+    # Git init
+    try:
+        subprocess.run(["git", "init"], cwd=target, capture_output=True, check=True)
+        subprocess.run(["git", "add", "."], cwd=target, capture_output=True, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", f"init: {name} cockpit from ai-cockpit template"],
+            cwd=target, capture_output=True, check=True,
+        )
+        print("  \033[32m+\033[0m git repo initialized")
+    except Exception:
+        print("  \033[33m!\033[0m git init skipped (git not available)")
+
+    # GitHub repo
+    if github:
+        try:
+            subprocess.run(
+                ["gh", "repo", "create", f"{org}/{slug}", "--private", "--source", str(target), "--push"],
+                cwd=target, check=True,
+            )
+            print(f"  \033[32m+\033[0m GitHub repo: {org}/{slug}")
+        except Exception as e:
+            print(f"  \033[33m!\033[0m GitHub repo creation failed: {e}")
+            print(f"    Create manually: gh repo create {org}/{slug} --source {target}")
+
+    # Register in cockpit
+    reg = load_registry()
+    entry = {
+        "name": name,
+        "slug": slug,
+        "path": str(target),
+        "org": org,
+        "description": description,
+        "has_settings": False,
+    }
+    reg["cockpits"].append(entry)
+    save_registry(reg)
+
+    # Done!
+    print()
+    print(f"  \033[1m\033[32mCockpit ready.\033[0m")
+    print()
+    print(f"  Next steps:")
+    print(f"    1. Edit {target}/CLAUDE.md — fill in your role context and rules")
+    print(f"    2. Run: \033[1mcockpit {slug}\033[0m")
+    print(f"    3. Type /takeoff in Claude Code")
+    print()
+    print(f"  Optional — install Claude Code plugins:")
+    print(f"    cockpit marketplace")
+    print()
+
+
 def cmd_marketplace():
     """Show marketplace info."""
     print()
@@ -1141,7 +1318,9 @@ def _main():
 
     command = args[0]
 
-    if command == "scan":
+    if command == "new":
+        cmd_new(args[1:])
+    elif command == "scan":
         cmd_scan(reg)
     elif command == "status":
         cmd_status(reg)
