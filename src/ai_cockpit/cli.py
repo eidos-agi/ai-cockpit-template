@@ -12,6 +12,8 @@ Usage:
     cockpit add <path>   Register a cockpit manually
     cockpit remove <name> Remove from registry
     cockpit new <path>   Create a new cockpit from the template
+    cockpit can-i-close  Check if all cockpits are safe to close (alias: cic)
+    cockpit touch-and-go Commit & push all dirty cockpits (alias: tag)
     cockpit config       Show/edit configuration
     cockpit marketplace  Discover Claude Code plugins
 
@@ -1278,6 +1280,192 @@ def cmd_new(args):
     print()
 
 
+def _git(path, *args, timeout=5):
+    """Run a git command in a directory, return stdout or None on failure."""
+    try:
+        r = subprocess.run(
+            ["git", *args], cwd=path,
+            capture_output=True, text=True, timeout=timeout,
+        )
+        return r.stdout.strip() if r.returncode == 0 else None
+    except Exception:
+        return None
+
+
+def _check_cockpit_workspace(path):
+    """Run workspace contract checks on a single cockpit path. Returns (clears, warns, blocks)."""
+    p = Path(path)
+    clears, warns, blocks = [], [], []
+
+    if not p.exists():
+        blocks.append("Path missing")
+        return clears, warns, blocks
+
+    # 1. Uncommitted changes
+    status = _git(p, "status", "--porcelain")
+    if status is not None:
+        lines = status.splitlines() if status else []
+        untracked = [l for l in lines if l.startswith("??")]
+        modified = [l for l in lines if not l.startswith("??")]
+        if modified:
+            blocks.append(f"{len(modified)} uncommitted changes")
+        elif untracked:
+            warns.append(f"{len(untracked)} untracked files")
+        else:
+            clears.append("Working tree clean")
+    else:
+        warns.append("Not a git repo")
+
+    # 2. Unpushed commits
+    unpushed = _git(p, "log", "@{push}..HEAD", "--oneline")
+    if unpushed is not None:
+        if unpushed:
+            count = len(unpushed.splitlines())
+            blocks.append(f"{count} unpushed commits")
+        else:
+            clears.append("All commits pushed")
+
+    # 3. Merge conflicts
+    if status:
+        conflicts = [l for l in status.splitlines() if l.startswith("UU") or l.startswith("AA")]
+        if conflicts:
+            blocks.append(f"{len(conflicts)} merge conflicts")
+
+    # 4. Secrets staged
+    staged = _git(p, "diff", "--cached", "--name-only")
+    if staged:
+        sensitive = [f for f in staged.splitlines()
+                     if any(s in f.lower() for s in [".env", "secret", "credential", "token", "password", ".key"])]
+        if sensitive:
+            blocks.append(f"Sensitive files staged: {', '.join(sensitive)}")
+
+    return clears, warns, blocks
+
+
+def cmd_can_i_close(reg, args):
+    """Run workspace contract checks across all registered cockpits."""
+    cockpits = reg["cockpits"]
+
+    # If a specific cockpit is named, check just that one
+    if args:
+        name = " ".join(a for a in args if not a.startswith("-"))
+        if name:
+            c = find_cockpit(reg, name)
+            if c:
+                cockpits = [c]
+            else:
+                print(f"  \033[31mNot found:\033[0m {name}")
+                sys.exit(1)
+
+    print()
+    print("  \033[1m\033[36mCAN I CLOSE?\033[0m")
+    print()
+
+    total_blocks = 0
+    total_warns = 0
+
+    for c in sorted(cockpits, key=lambda x: (x.get("org", ""), x["name"])):
+        p = Path(c["path"])
+        if not p.exists():
+            continue
+
+        clears, warns, blocks = _check_cockpit_workspace(c["path"])
+
+        if blocks:
+            verdict = "\033[31mBLOCK\033[0m"
+            total_blocks += len(blocks)
+        elif warns:
+            verdict = "\033[33mWARN\033[0m"
+            total_warns += len(warns)
+        else:
+            verdict = "\033[32mCLEAR\033[0m"
+
+        print(f"  {verdict}  \033[1m{c['slug']}\033[0m")
+        for b in blocks:
+            print(f"         \033[31m✗\033[0m {b}")
+        for w in warns:
+            print(f"         \033[33m!\033[0m {w}")
+
+    print()
+
+    if total_blocks:
+        print(f"  \033[31mBLOCKED\033[0m — {total_blocks} issues must be fixed before closing")
+        print(f"  Fix them, or run inside Claude Code for the full 20-check audit")
+    elif total_warns:
+        print(f"  \033[33mWARN\033[0m — safe to close, but {total_warns} loose ends")
+    else:
+        print(f"  \033[32mCLEAR\033[0m — all cockpits clean. Safe to close.")
+
+    print()
+    print(f"  \033[90mThis checks the workspace contract (git state).")
+    print(f"  For session + conversation contracts, run /can-i-close inside Claude Code.\033[0m")
+    print()
+
+
+def cmd_touch_and_go(reg, args):
+    """Commit and push all dirty registered cockpits."""
+    cockpits = reg["cockpits"]
+
+    # If a specific cockpit is named, just that one
+    if args:
+        name = " ".join(a for a in args if not a.startswith("-"))
+        if name:
+            c = find_cockpit(reg, name)
+            if c:
+                cockpits = [c]
+            else:
+                print(f"  \033[31mNot found:\033[0m {name}")
+                sys.exit(1)
+
+    print()
+    print("  \033[1m\033[36mTOUCH AND GO\033[0m")
+    print()
+
+    committed = 0
+    pushed = 0
+    skipped = 0
+
+    for c in sorted(cockpits, key=lambda x: (x.get("org", ""), x["name"])):
+        p = Path(c["path"])
+        if not p.exists():
+            continue
+
+        status = _git(p, "status", "--porcelain")
+        if not status:
+            skipped += 1
+            continue
+
+        lines = status.splitlines()
+        print(f"  \033[1m{c['slug']}\033[0m — {len(lines)} dirty files")
+
+        # Stage all
+        _git(p, "add", "-A")
+
+        # Commit
+        msg = f"touch-and-go: checkpoint {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        result = _git(p, "commit", "-m", msg)
+        if result is not None:
+            committed += 1
+            print(f"    \033[32m✓\033[0m committed")
+
+            # Push
+            push_result = _git(p, "push", timeout=15)
+            if push_result is not None:
+                pushed += 1
+                print(f"    \033[32m✓\033[0m pushed")
+            else:
+                print(f"    \033[33m!\033[0m push failed (no remote or auth issue)")
+        else:
+            print(f"    \033[33m!\033[0m commit failed")
+
+    print()
+    if committed:
+        print(f"  \033[32m{committed} committed, {pushed} pushed, {skipped} clean\033[0m")
+    else:
+        print(f"  \033[90mAll cockpits clean. Nothing to checkpoint.\033[0m")
+    print()
+
+
 def cmd_marketplace():
     """Show marketplace info."""
     print()
@@ -1320,6 +1508,10 @@ def _main():
 
     if command == "new":
         cmd_new(args[1:])
+    elif command in ("can-i-close", "cic"):
+        cmd_can_i_close(reg, args[1:])
+    elif command in ("touch-and-go", "tag"):
+        cmd_touch_and_go(reg, args[1:])
     elif command == "scan":
         cmd_scan(reg)
     elif command == "status":
