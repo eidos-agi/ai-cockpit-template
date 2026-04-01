@@ -1,0 +1,6 @@
+# Cockpit Registry — downstream cockpits that receive template skill updates
+# One local path per line. Lines starting with # are ignored.
+# Run `bin/sync-skills` to push updates to all listed cockpits.
+
+# ~/repos/my-planning-cockpit
+# ~/repos/my-ops-cockpit

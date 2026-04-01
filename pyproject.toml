@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-cockpit"
+version = "0.1.0"
+description = "Launch pad for AI cockpits — TUI manager for Claude Code workspaces"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Eidos AGI", email = "daniel@eidosagi.com" },
+]
+keywords = ["claude-code", "ai", "cockpit", "tui", "workspace", "mcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    "textual>=0.40.0",
+]
+
+[project.scripts]
+cockpit = "ai_cockpit.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/eidos-agi/ai-cockpit-template"
+Repository = "https://github.com/eidos-agi/ai-cockpit-template"
+Issues = "https://github.com/eidos-agi/ai-cockpit-template/issues"
+Marketplace = "https://github.com/eidos-agi/eidos-marketplace"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_cockpit"]

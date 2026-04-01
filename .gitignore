@@ -11,3 +11,10 @@ Thumbs.db
 
 # Claude Code session files (bookmarks live in ~/.claude/, not in repo)
 .claude/settings.json
+
+# Python packaging
+dist/
+build/
+*.egg-info/
+__pycache__/
+*.pyc

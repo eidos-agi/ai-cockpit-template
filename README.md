@@ -14,11 +14,49 @@ A cockpit is a Claude Code workspace with a rhythm:
 
 This template provides the universal primitives that every cockpit needs. Fork it, add your domain-specific skills, and you have a cockpit.
 
+## Installation
+
+```bash
+pip install ai-cockpit
+```
+
+Or install from source:
+
+```bash
+gh repo clone eidos-agi/ai-cockpit-template
+cd ai-cockpit-template
+pip install -e .
+```
+
+Then tell cockpit where your workspaces live:
+
+```bash
+cockpit config --add-scan-dir ~/my-cockpits
+cockpit scan
+```
+
+### Claude Code Plugins
+
+The cockpit pairs well with Eidos plugins for Claude Code:
+
+```bash
+cockpit marketplace
+```
+
+Or install the marketplace directly:
+
+```bash
+claude plugins marketplace add eidos-agi/eidos-marketplace
+claude plugins install resume-resume
+claude plugins install ike
+claude plugins install visionlog
+```
+
 ## Quick Start
 
 ```bash
 # Clone the template
-gh repo create my-cockpit --template rhea-impact/ai-cockpit-template --public
+gh repo create my-cockpit --template eidos-agi/ai-cockpit-template --public
 cd my-cockpit
 
 # Customize CLAUDE.md with your role context
@@ -175,4 +213,4 @@ Cockpits built from this template:
 
 ## License
 
-MIT. Built by [Rhea Impact](https://rheaimpact.com) — free software for coding agents.
+MIT. Built by [Eidos AGI](https://github.com/eidos-agi) — free software for coding agents.
