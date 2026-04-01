@@ -1,19 +1,31 @@
 # /land — Cockpit Park Sequence
 
 ## When to Use
-End of every session. Last thing you run before closing.
+End of session. Only after `/can-i-close` passes or pilot explicitly overrides.
+
+**IMPORTANT:** Do NOT suggest `/land` unprompted. If the pilot is pausing or saving state, suggest `/touch-and-go` instead. `/land` means the session is OVER.
 
 ## What It Does
 Wraps up the session automatically: commits uncommitted work, pushes to remote, writes a bookmark for next session, updates state, and exits cleanly.
+
+## Pre-Flight Gate
+
+Before executing any landing steps, run `/can-i-close` first.
+
+- If verdict is **CLEAR**: proceed with landing.
+- If verdict is **WARN**: show warnings, then proceed (warnings don't block landing).
+- If verdict is **BLOCK**: show blocks and STOP. Do not land. Tell the pilot what to fix.
+- **`/land --force`** — Skip the gate. Land regardless of contract state. Use when the pilot knows what they're doing.
 
 ## Core Principle
 **Landing is automated, not an interview.** Infer everything from git state and session context. Only ask the pilot if something is genuinely ambiguous (e.g., uncommitted changes with no obvious commit message).
 
 ## Invocation Modes
 
-- **`/land`** — Automatic. Infers everything, commits, pushes, bookmarks.
+- **`/land`** — Automatic with can-i-close gate. Infers everything, commits, pushes, bookmarks.
 - **`/land <note>`** — Automatic with a note. Adds the note to the bookmark summary.
 - **`/land blocked <reason>`** — Marks session as blocked with the given reason.
+- **`/land --force`** — Skip can-i-close gate. Land immediately.
 
 ## Execution Steps
 
