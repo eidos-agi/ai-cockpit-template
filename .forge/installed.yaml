@@ -1,0 +1,27 @@
+format_version: 1
+
+forges:
+  loss-forge:
+    installed: 2026-04-02
+    skill_used: /loss-init
+    artifacts:
+      - src/ai_cockpit/loss.py
+      - LOSS-BASELINE.md
+    notes: "Baseline: Loss 1.28 | Mission 1.00"
+
+  foss-forge:
+    installed: 2026-04-01
+    skill_used: manual
+    artifacts:
+      - CONTRIBUTING.md
+      - LICENSE
+      - CHANGELOG.md
+    notes: "Copyright Eidos AGI, MIT license"
+
+  ship-forge:
+    installed: 2026-04-01
+    skill_used: manual
+    artifacts:
+      - .github/workflows/ci.yml
+      - .github/workflows/publish.yml
+    notes: "CI on ubuntu+macos, py3.10/3.12/3.13. Trusted publisher not yet configured."
