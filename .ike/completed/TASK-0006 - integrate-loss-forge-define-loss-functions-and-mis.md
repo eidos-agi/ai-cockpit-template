@@ -1,7 +1,7 @@
 ---
 id: TASK-0006
 title: Integrate loss-forge — define loss functions and mission scores for ai-cockpit
-status: To Do
+status: Done
 created: '2026-04-01'
 priority: high
 tags:
@@ -14,6 +14,7 @@ definition-of-done:
   - cockpit grade CLI command runs the loss check
   - Baseline snapshot committed
   - CI runs /loss-check and fails on regression
+updated: '2026-04-02'
 ---
 Use eidos-agi/loss-forge to define measurable loss functions and mission scores for the cockpit CLI. Run /loss-init to generate the loss module, then /loss-check gates PRs.
 
@@ -33,3 +34,5 @@ Candidate loss functions:
 - L6: CLI complexity (total LOC in cli.py — should shrink or hold, not grow unbounded)
 
 This makes every release provably better, not just bigger.
+
+**Completion notes:** Loss module live. cockpit grade runs 6 missions (all 100%) + 6 losses (composite 1.28). Baseline committed. Next release must beat or match.

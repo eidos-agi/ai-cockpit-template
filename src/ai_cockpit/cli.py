@@ -19,6 +19,7 @@ Usage:
     cockpit grade        Loss functions + mission scores (loss-forge)
     cockpit grade --json Machine-readable loss/mission output
     cockpit doctor       Check environment (git, gh, claude, python)
+    cockpit completions  Generate shell completions (bash/zsh)
     cockpit version      Show version
 
 Schema versions:
@@ -1514,6 +1515,85 @@ def cmd_touch_and_go(reg, args):
     print()
 
 
+def cmd_completions(args):
+    """Generate shell completions."""
+    shell = "zsh" if args and args[0] == "zsh" else "bash" if args and args[0] == "bash" else None
+
+    if "--help" in args or "-h" in args or not shell:
+        print()
+        print("  \033[1m\033[36mcompletions\033[0m — Generate shell completions")
+        print()
+        print("  Usage:")
+        print("    cockpit completions bash    Generate bash completions")
+        print("    cockpit completions zsh     Generate zsh completions")
+        print()
+        print("  Install:")
+        print("    # bash")
+        print("    cockpit completions bash > ~/.local/share/bash-completion/completions/cockpit")
+        print()
+        print("    # zsh")
+        print("    cockpit completions zsh > ~/.zfunc/_cockpit")
+        print("    # then add: fpath=(~/.zfunc $fpath) to .zshrc")
+        print()
+        return
+
+    commands = [
+        "new", "can-i-close", "cic", "touch-and-go", "tag",
+        "scan", "status", "list", "config", "marketplace",
+        "doctor", "version", "grade", "completions",
+        "upgrade", "add", "remove", "help",
+    ]
+
+    # Get cockpit slugs from registry
+    reg = load_registry()
+    slugs = [c["slug"] for c in reg.get("cockpits", [])]
+
+    if shell == "bash":
+        print(f"""_cockpit_completions() {{
+    local cur="${{COMP_WORDS[COMP_CWORD]}}"
+    local commands="{' '.join(commands)}"
+    local cockpits="{' '.join(slugs)}"
+    if [ "$COMP_CWORD" -eq 1 ]; then
+        COMPREPLY=($(compgen -W "$commands $cockpits" -- "$cur"))
+    fi
+}}
+complete -F _cockpit_completions cockpit""")
+
+    elif shell == "zsh":
+        cockpit_lines = "\n".join(f"    '{s}:{s} cockpit'" for s in slugs) if slugs else ""
+        print(f"""#compdef cockpit
+
+_cockpit() {{
+    local -a commands cockpits
+    commands=(
+        'new:Create a new cockpit'
+        'can-i-close:Check if cockpits are safe to close'
+        'cic:Alias for can-i-close'
+        'touch-and-go:Commit and push all dirty cockpits'
+        'tag:Alias for touch-and-go'
+        'scan:Auto-discover cockpits'
+        'status:Show version and capabilities'
+        'list:List registered cockpits'
+        'config:Show or edit configuration'
+        'marketplace:Discover Claude Code plugins'
+        'doctor:Check environment'
+        'version:Show version'
+        'grade:Loss functions and mission scores'
+        'completions:Generate shell completions'
+        'upgrade:Upgrade cockpit schema'
+        'add:Register a cockpit'
+        'remove:Unregister a cockpit'
+        'help:Show help'
+    )
+    cockpits=(
+{cockpit_lines}
+    )
+    _describe 'command' commands -- cockpits
+}}
+
+_cockpit""")
+
+
 def cmd_version():
     """Show version."""
     from ai_cockpit import __version__
@@ -1653,6 +1733,8 @@ def _main():
             print(_json.dumps(compute_all(), indent=2, default=str))
         else:
             print_panel()
+    elif command == "completions":
+        cmd_completions(args[1:])
     elif command in ("version", "--version", "-V"):
         cmd_version()
     elif command == "doctor":
