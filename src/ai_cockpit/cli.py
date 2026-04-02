@@ -16,6 +16,8 @@ Usage:
     cockpit touch-and-go Commit & push all dirty cockpits (alias: tag)
     cockpit config       Show/edit configuration
     cockpit marketplace  Discover Claude Code plugins
+    cockpit doctor       Check environment (git, gh, claude, python)
+    cockpit version      Show version
 
 Schema versions:
     v0  Pre-cockpit-cockpit (state.json only)
@@ -1129,10 +1131,14 @@ def cmd_new(args):
         print("    cockpit new ./ops-cockpit --github")
         print()
         print("  This creates a ready-to-fly cockpit with:")
-        print("    - /takeoff, /land, /cockpit-status skills")
+        print("    - 8 skills: takeoff, land, touch-and-go, can-i-close,")
+        print("      cockpit-status, cockpit-repair, pre-flight, clean-sweep")
         print("    - state.json for session tracking")
         print("    - CLAUDE.md template with placeholder sections to fill in")
         print("    - Git repo initialized")
+        print()
+        print("  Session lifecycle:")
+        print("    /takeoff → work → /touch-and-go → work → /can-i-close → /land")
         print()
         print("  After creating, customize CLAUDE.md with your role context,")
         print("  then run: cockpit <name>")
@@ -1506,6 +1512,74 @@ def cmd_touch_and_go(reg, args):
     print()
 
 
+def cmd_version():
+    """Show version."""
+    from ai_cockpit import __version__
+    print(f"  ai-cockpit {__version__}")
+
+
+def cmd_doctor():
+    """Check environment for required tools."""
+    print()
+    print("  \033[1m\033[36mCOCKPIT DOCTOR\033[0m")
+    print()
+
+    checks = [
+        ("python", [sys.executable, "--version"]),
+        ("git", ["git", "--version"]),
+        ("gh", ["gh", "--version"]),
+        ("claude", ["claude", "--version"]),
+    ]
+
+    all_ok = True
+    for name, cmd in checks:
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                ver = r.stdout.strip().splitlines()[0] if r.stdout.strip() else "ok"
+                print(f"  \033[32m✓\033[0m {name:<12s} {ver}")
+            else:
+                print(f"  \033[31m✗\033[0m {name:<12s} not working")
+                all_ok = False
+        except FileNotFoundError:
+            print(f"  \033[31m✗\033[0m {name:<12s} not installed")
+            all_ok = False
+        except Exception:
+            print(f"  \033[33m!\033[0m {name:<12s} check failed")
+            all_ok = False
+
+    # Check textual
+    try:
+        import textual
+        print(f"  \033[32m✓\033[0m {'textual':<12s} {textual.__version__}")
+    except ImportError:
+        print(f"  \033[31m✗\033[0m {'textual':<12s} not installed (pip install textual)")
+        all_ok = False
+
+    # Check config
+    print()
+    cfg = load_config()
+    dirs = cfg.get("scan_dirs", [])
+    reg = load_registry()
+    cockpits = reg.get("cockpits", [])
+    print(f"  \033[90mConfig:    {CONFIG_PATH}\033[0m")
+    print(f"  \033[90mRegistry:  {REGISTRY_PATH}\033[0m")
+    print(f"  \033[90mScan dirs: {len(dirs)}   Cockpits: {len(cockpits)}\033[0m")
+
+    if not dirs:
+        print()
+        print(f"  \033[33m!\033[0m No scan directories configured")
+        print(f"    Run: cockpit config --add-scan-dir ~/your-repos")
+
+    print()
+    if all_ok:
+        print(f"  \033[32mAll good.\033[0m")
+    else:
+        print(f"  \033[33mSome tools missing — cockpit will work but with reduced features.\033[0m")
+        print(f"  \033[90mgit: required  |  gh: needed for --github  |  claude: needed to launch cockpits\033[0m")
+    print()
+
+
 def cmd_marketplace():
     """Show marketplace info."""
     print()
@@ -1570,6 +1644,10 @@ def _main():
         name = args[1]
         dry_run = "--apply" not in args
         cmd_upgrade(reg, name, dry_run=dry_run)
+    elif command in ("version", "--version", "-V"):
+        cmd_version()
+    elif command == "doctor":
+        cmd_doctor()
     elif command in ("-h", "--help", "help"):
         print(__doc__)
     else:

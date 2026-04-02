@@ -8,9 +8,11 @@ Universal session lifecycle primitives for Claude Code workspaces.
 
 A cockpit is a Claude Code workspace with a rhythm:
 
-1. **`/takeoff`** — Boot sequence. Reads your last bookmark, checks what changed, shows priorities. Waits for orders.
+1. **`/takeoff`** — Boot sequence. Reads your last bookmark, checks what changed, shows priorities.
 2. **Work** — Use your domain-specific skills. The cockpit tracks state.
-3. **`/land`** — Park sequence. Captures what got done, what's next, writes a bookmark for next session.
+3. **`/touch-and-go`** — Mid-session checkpoint. Saves state, compacts context, keeps flying.
+4. **`/can-i-close`** — Pre-close audit. Checks 3 contracts (workspace, session, conversation).
+5. **`/land`** — Park sequence. Gated by can-i-close. Commits, pushes, bookmarks.
 
 This template provides the universal primitives that every cockpit needs. Fork it, add your domain-specific skills, and you have a cockpit.
 
@@ -55,19 +57,47 @@ claude plugins install visionlog
 ## Quick Start
 
 ```bash
-# Clone the template
-gh repo create my-cockpit --template eidos-agi/ai-cockpit-template --public
-cd my-cockpit
+# Create a new cockpit
+cockpit new ~/repos/my-ops-cockpit
 
-# Customize CLAUDE.md with your role context
-# Add domain-specific skills to .claude/skills/
-
-# Start working
-claude
+# Launch it
+cockpit my-ops-cockpit
 # > /takeoff
 # > ... do your work ...
+# > /touch-and-go  (mid-session checkpoint)
+# > ... more work ...
+# > /can-i-close   (pre-close check)
 # > /land
 ```
+
+Or from a GitHub template:
+
+```bash
+gh repo create my-cockpit --template eidos-agi/ai-cockpit-template --public
+cd my-cockpit
+cockpit add .
+```
+
+## CLI Commands
+
+The `cockpit` command manages your fleet of cockpits:
+
+| Command | What |
+|---------|------|
+| `cockpit` | Interactive TUI selector |
+| `cockpit <name>` | Launch a cockpit in Claude Code |
+| `cockpit new <path>` | Scaffold a new cockpit from the template |
+| `cockpit can-i-close` | Check all cockpits for uncommitted work (alias: `cic`) |
+| `cockpit touch-and-go` | Commit & push all dirty cockpits (alias: `tag`) |
+| `cockpit scan` | Auto-discover cockpits in scan directories |
+| `cockpit status` | Show schema version & capabilities |
+| `cockpit upgrade <name>` | Upgrade cockpit to latest schema |
+| `cockpit config` | Manage scan directories |
+| `cockpit marketplace` | Discover Claude Code plugins |
+| `cockpit doctor` | Check environment (git, gh, claude, python) |
+| `cockpit version` | Show version |
+
+Every command supports `--help`.
 
 ## What's Included
 
@@ -75,10 +105,12 @@ claude
 
 | Skill | Trigger | What It Does |
 |-------|---------|-------------|
-| `/takeoff` | Start of session | ASCII header, drift detection, composes `/pre-flight` for full briefing |
-| `/pre-flight` | Called by takeoff (or standalone) | Subagent scan: where we were / are / going / blockers |
-| `/land` | End of session | Capture outcomes, blockers, next actions, write bookmark |
-| `/cockpit-status` | Anytime | Show active workstreams, blockers, ages, who owes what |
+| `/takeoff` | Start of session | Boot: bookmark resume, drift detection, priorities |
+| `/touch-and-go` | Mid-session | Checkpoint: commit, push, bookmark, context compaction |
+| `/can-i-close` | Before closing | Audit 3 contracts: workspace, session, conversation (20 checks) |
+| `/land` | End of session | Park sequence — gated by can-i-close |
+| `/pre-flight` | Called by takeoff | Situational scan: where we were / are / going / blockers |
+| `/cockpit-status` | Anytime | Active workstreams, blockers, ages, ownership |
 | `/cockpit-repair` | When things break | Validate state files, find corruption, offer fixes |
 | `/clean-sweep` | Workspace behind | Commit, push, build, test all repos in one sweep |
 
@@ -142,7 +174,7 @@ When configured, `/takeoff` will:
 ## Design Principles
 
 1. **Cheap boots** — `/takeoff` reads 2 things: state.json and latest bookmark. Git state and CLAUDE.md are already in session context. No redundant I/O.
-2. **Session contracts** — Every session has a lifecycle: boot → work → land. Bookmarks are the contract between sessions.
+2. **Session contracts** — Every session has a lifecycle: boot → work → checkpoint → audit → land. Three contracts must pass before closing: workspace (git), session (bookmarks/tasks), conversation (promises/decisions).
 3. **Drift detection** — If the branch changed, files were modified, or commits landed since your last bookmark, `/takeoff` tells you.
 4. **Domain-agnostic** — The template knows nothing about your project. It only knows about sessions, bookmarks, and state.
 5. **Composable** — Add as many domain skills as you want. The primitives stay the same.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-cockpit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Launch pad for AI cockpits — TUI manager for Claude Code workspaces"
 readme = "README.md"
 license = "MIT"
@@ -28,6 +28,9 @@ classifiers = [
 dependencies = [
     "textual>=0.40.0",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
 
 [project.scripts]
 cockpit = "ai_cockpit.cli:main"

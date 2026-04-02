@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.2.0 — 2026-04-01
+
+The "real software" release. Cockpit is now a pip-installable CLI with lifecycle commands.
+
+### CLI — `pip install ai-cockpit`
+- **`cockpit new <path>`** — Scaffold a new cockpit from the bundled template. Interactive wizard with 8 skills, git init, auto-register.
+- **`cockpit can-i-close`** (alias: `cic`) — Workspace contract checks across all registered cockpits. Fleet-wide.
+- **`cockpit touch-and-go`** (alias: `tag`) — Commit and push all dirty cockpits. Fleet-wide checkpoint.
+- **`cockpit config`** — Manage scan directories. No more hardcoded paths.
+- **`cockpit marketplace`** — Discover and install Eidos plugins for Claude Code.
+- **`cockpit doctor`** — Check environment: git, gh, claude, python, textual, config state.
+- **`cockpit version`** — Show installed version.
+- All commands support `--help`.
+
+### Skills — Session Lifecycle Redesign
+- **`/touch-and-go`** — Mid-flight checkpoint + context compaction point.
+- **`/can-i-close`** — 3-contract pre-close audit (20 checks): workspace, session, conversation.
+- **`/land` updated** — Gated by `/can-i-close`. BLOCKs prevent landing. `--force` to override.
+
+### Packaging
+- `pyproject.toml` with hatchling build, `cockpit` entry point
+- Template files bundled in wheel
+- Published to PyPI as `ai-cockpit`
+- GitHub Actions CI + trusted publisher for PyPI releases
+- CONTRIBUTING.md added
+
+### Fixes
+- Copyright: Rhea Impact → Eidos AGI
+- README rewritten with CLI commands table, updated lifecycle
+- Hardcoded paths replaced with `~/.cockpit/config.json`
+
 ## v1.3.0 — 2026-03-10
 
 Lean takeoff, fleet sync, phone-home, and learning browser plugin.
