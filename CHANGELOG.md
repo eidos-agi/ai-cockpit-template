@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.4.0 — 2026-04-03
+
+Release pipeline standardization and forge ecosystem integration.
+
+### Release Pipeline (ADR-001)
+- **Single source of truth for version** — `importlib.metadata.version()` replaces hardcoded `__version__`. pyproject.toml is the only version source.
+- **CI guardrails** — publish.yml validates tag matches pyproject.toml version and CHANGELOG has an entry before publishing.
+- **Forge ecosystem** — CLAUDE.md templates reference forge-forge MCP for discovery, `.forge/installed.yaml` for provenance.
+- **cockpit grade** — loss-forge instrument panel (6 missions, 6 losses). Baseline: Loss 1.28 | Mission 1.00.
+- **Shell completions** — `cockpit completions bash/zsh` with cockpit name completion.
+- **cockpit doctor** — environment check (git, gh, claude, python, textual).
+- **PROJECT-GUIDE.md** — comprehensive agent handoff documentation.
+
+### Skills
+- **`/can-i-close`** — 3-contract pre-close audit (workspace, session, conversation).
+- **`/touch-and-go`** — mid-flight checkpoint + context compaction.
+- **`/land` updated** — gated by `/can-i-close`. `--force` to override.
+
+### Repo
+- Renamed from `ai-cockpit-template` to `ai-cockpit`.
+- `.forge/installed.yaml` — retroactive provenance for loss-forge, foss-forge, ship-forge.
+
+## v0.3.0 — 2026-04-03
+
+Forge ecosystem integration (superseded by v0.4.0 — released same day).
+
 ## v0.2.0 — 2026-04-01
 
 The "real software" release. Cockpit is now a pip-installable CLI with lifecycle commands.
